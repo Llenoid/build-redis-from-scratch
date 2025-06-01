@@ -96,7 +96,8 @@ func (r *Resp) readArray() (Value, error) {
 		}
 
 		// add parsed value to array
-		v.array[i] = val
+		v.array = append(v.array, val)
+		// v.array[i] = val
 	}
 
 	return v, nil
