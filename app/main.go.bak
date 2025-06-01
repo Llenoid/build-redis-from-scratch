@@ -1,0 +1,69 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func main() {
+	// input := "$5\r\nAhmed\r\n"
+	// reader := bufio.NewReader(strings.NewReader(input))
+	//
+	// b, _ := reader.ReadByte()
+	// if b != '$' {
+	// 	fmt.Println("Invalid type, expecting bulk strings only")
+	// 	os.Exit(1)
+	// }
+	//
+	// size, _ := reader.ReadByte()
+	//
+	// strSize, _ := strconv.ParseInt(string(size), 10, 64)
+	//
+	// // consume \r\n
+	// reader.ReadByte()
+	// reader.ReadByte()
+	//
+	// name := make([]byte, strSize)
+	// reader.Read(name)
+	//
+	// fmt.Println(string(name))
+
+	fmt.Println("Listening on oprt :6379")
+
+	// Create new server
+	l, err := net.Listen("tcp", ":6379")
+	if err != nil {
+		fmt.Println("err: ", err.Error())
+		return
+	}
+
+	// Listen for connections
+	conn, err := l.Accept()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	defer conn.Close()
+
+	for {
+		buf := make([]byte, 1024)
+
+		// read message from client
+		_, err := conn.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			fmt.Println("Error reading from client: ", err.Error())
+			os.Exit(1)
+		}
+		// ignore request and send back message
+		conn.Write([]byte("+OK\r\n"))
+	}
+}
