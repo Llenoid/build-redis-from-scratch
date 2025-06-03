@@ -27,8 +27,27 @@ type Resp struct {
 	reader *bufio.Reader
 }
 
+type Writer struct {
+	writer io.Writer
+}
+
 func NewResp(rd io.Reader) *Resp {
 	return &Resp{reader: bufio.NewReader(rd)}
+}
+
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{writer: w}
+}
+
+func (w *Writer) Write(v Value) error {
+	var bytes = v.Marshall()
+
+	_, err := w.writer.Write(bytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Resp) readLine() (line []byte, n int, err error) {
@@ -96,8 +115,8 @@ func (r *Resp) readArray() (Value, error) {
 		}
 
 		// add parsed value to array
-		v.array = append(v.array, val)
-		// v.array[i] = val
+		// v.array = append(v.array, val)
+		v.array[i] = val
 	}
 
 	return v, nil
@@ -124,4 +143,71 @@ func (r *Resp) readBulk() (Value, error) {
 	r.readLine()
 
 	return v, nil
+}
+
+// Marshall method which converts the Value to bytes
+func (v Value) Marshall() []byte {
+	switch v.typ {
+	case "array":
+		return v.marshallArray()
+	case "bulk":
+		return v.marshallBulk()
+	case "string":
+		return v.marshallString()
+	case "null":
+		return v.marshallNull()
+	case "error":
+		return v.marshallError()
+	default:
+		return []byte{}
+	}
+}
+
+func (v Value) marshallError() []byte {
+	var bytes []byte
+	bytes = append(bytes, ERROR)
+	bytes = append(bytes, v.str...)
+	bytes = append(bytes, '\r', '\n')
+
+	return bytes
+}
+
+func (v Value) marshallNull() []byte {
+	return []byte("$-1\r\n")
+}
+
+func (v Value) marshallString() []byte {
+	var bytes []byte
+	bytes = append(bytes, STRING)
+	bytes = append(bytes, v.str...)
+	bytes = append(bytes, '\r', '\n')
+
+	return bytes
+}
+
+func (v Value) marshallBulk() []byte {
+	var bytes []byte
+	bytes = append(bytes, BULK)
+	bytes = append(bytes, strconv.Itoa(len(v.bulk))...)
+	bytes = append(bytes, '\r', '\n')
+	bytes = append(bytes, v.bulk...)
+	bytes = append(bytes, '\r', '\n')
+
+	return bytes
+}
+
+func (v Value) marshallArray() []byte {
+	len := len(v.array)
+
+	var bytes []byte
+
+	bytes = append(bytes, ARRAY)
+	bytes = append(bytes, strconv.Itoa(len)...)
+	bytes = append(bytes, '\r', '\n')
+
+	for i := 0; i < len; i++ {
+		bytes = append(bytes, v.array[i].Marshall()...)
+	}
+
+	return bytes
 }
